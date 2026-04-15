@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analyzoooor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0f;
+  --bg2: #12121a;
+  --bg3: #1a1a25;
+  --border: #2a2a3a;
+  --text: #e0e0e8;
+  --text-dim: #6a6a7a;
+  --green: #00ff88;
+  --green-dim: #00cc6a;
+  --red: #ff4466;
+  --red-dim: #cc3355;
+  --cyan: #00d4ff;
+  --yellow: #ffcc00;
+  --purple: #aa66ff;
+  --accent: #00ff88;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Scanline overlay */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: repeating-linear-gradient(
+    transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* ── Header ─────────────────────────── */
+.header {
+  text-align: center;
+  padding: 40px 0 30px;
+  position: relative;
+}
+
+.logo {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 2.8rem;
+  font-weight: 700;
+  letter-spacing: 4px;
+  background: linear-gradient(135deg, var(--green), var(--cyan));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 40px rgba(0,255,136,0.3);
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+}
+
+/* ── Input Section ──────────────────── */
+.input-section {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 28px;
+  margin-bottom: 24px;
+}
+
+.input-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.input-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.input-group label {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.input-group input, .input-group select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  padding: 12px 16px;
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.input-group input:focus, .input-group select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(0,255,136,0.1);
+}
+
+.input-group input::placeholder {
+  color: var(--text-dim);
+  opacity: 0.5;
+}
+
+.ca-input { min-width: 0; }
+.chain-select { width: 140px; flex: none; }
+.top-input { width: 100px; flex: none; }
+
+.btn-analyze {
+  background: linear-gradient(135deg, var(--green), var(--cyan));
+  color: var(--bg);
+  border: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 12px 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex: none;
+}
+
+.btn-analyze:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(0,255,136,0.3);
+}
+
+.btn-analyze:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ── Token Info Card ────────────────── */
+.token-card {
+  display: none;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.token-card.visible { display: block; }
+
+.token-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.token-name {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.token-symbol {
+  font-size: 0.85rem;
+  color: var(--cyan);
+}
+
+.token-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-label {
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.stat-value {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.stat-value.green { color: var(--green); }
+.stat-value.red { color: var(--red); }
+
+/* ── Progress Bar ───────────────────── */
+.progress-section {
+  display: none;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.progress-section.visible { display: block; }
+
+.progress-bar-track {
+  background: var(--bg);
+  border-radius: 6px;
+  height: 8px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--green), var(--cyan));
+  border-radius: 6px;
+  transition: width 0.3s ease;
+  width: 0%;
+  box-shadow: 0 0 10px rgba(0,255,136,0.4);
+}
+
+.progress-text {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
+.progress-text span { color: var(--text); }
+
+.status-msg {
+  font-size: 0.75rem;
+  color: var(--cyan);
+  margin-bottom: 12px;
+  min-height: 1.2em;
+}
+
+/* ── Summary Cards ──────────────────── */
+.summary-section {
+  display: none;
+  margin-bottom: 24px;
+}
+
+.summary-section.visible { display: block; }
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.summary-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  text-align: center;
+}
+
+.summary-card .sc-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.summary-card .sc-label {
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+/* ── Results Table ──────────────────── */
+.table-section {
+  display: none;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.table-section.visible { display: block; }
+
+.table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.table-title {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.btn-csv {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--cyan);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  padding: 6px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-csv:hover {
+  background: var(--border);
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+
+thead th {
+  background: var(--bg3);
+  color: var(--text-dim);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 10px 12px;
+  text-align: right;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+thead th:first-child { text-align: center; }
+thead th:nth-child(2) { text-align: left; }
+thead th:hover { color: var(--cyan); }
+
+tbody tr {
+  border-bottom: 1px solid rgba(42,42,58,0.5);
+  transition: background 0.15s;
+}
+
+tbody tr:hover { background: rgba(0,212,255,0.03); }
+
+td {
+  padding: 8px 12px;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+td:first-child { text-align: center; color: var(--text-dim); }
+td:nth-child(2) { text-align: left; font-size: 0.7rem; }
+
+.pnl-pos { color: var(--green); }
+.pnl-neg { color: var(--red); }
+.dim { color: var(--text-dim); }
+.diamond { color: var(--cyan); }
+.seller { color: var(--yellow); }
+
+/* Row animation */
+tbody tr {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Responsive ─────────────────────── */
+@media (max-width: 768px) {
+  .input-row {
+    flex-direction: column;
+  }
+  .chain-select, .top-input {
+    width: 100%;
+  }
+  .logo { font-size: 1.8rem; }
+  .container { padding: 12px; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <div class="logo">ANALYZOOOOR</div>
+    <div class="subtitle">Token Holder Analytics · Base · BSC · Solana</div>
+  </div>
+
+  <!-- Input -->
+  <div class="input-section">
+    <div class="input-row">
+      <div class="input-group ca-input">
+        <label>Contract Address</label>
+        <input type="text" id="ca" placeholder="Paste token CA..." spellcheck="false" autocomplete="off">
+      </div>
+      <div class="input-group chain-select">
+        <label>Chain</label>
+        <select id="chain">
+          <option value="auto">Auto-detect</option>
+          <option value="base">Base</option>
+          <option value="bsc">BSC</option>
+          <option value="solana">Solana</option>
+        </select>
+      </div>
+      <div class="input-group top-input">
+        <label>Top N</label>
+        <input type="number" id="top" value="50" min="10" max="500">
+      </div>
+      <button class="btn-analyze" id="btn-go" onclick="startAnalysis()">Analyze</button>
+    </div>
+  </div>
+
+  <!-- Token Info -->
+  <div class="token-card" id="token-card">
+    <div class="token-header">
+      <span class="token-name" id="tk-name">—</span>
+      <span class="token-symbol" id="tk-symbol">—</span>
+    </div>
+    <div class="token-stats">
+      <div class="stat"><span class="stat-label">Price</span><span class="stat-value" id="tk-price">—</span></div>
+      <div class="stat"><span class="stat-label">24h Change</span><span class="stat-value" id="tk-change">—</span></div>
+      <div class="stat"><span class="stat-label">Liquidity</span><span class="stat-value" id="tk-liq">—</span></div>
+      <div class="stat"><span class="stat-label">24h Volume</span><span class="stat-value" id="tk-vol">—</span></div>
+      <div class="stat"><span class="stat-label">Market Cap</span><span class="stat-value" id="tk-mcap">—</span></div>
+      <div class="stat"><span class="stat-label">DEX</span><span class="stat-value" id="tk-dex">—</span></div>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div class="progress-section" id="progress-section">
+    <div class="status-msg" id="status-msg">Connecting...</div>
+    <div class="progress-bar-track">
+      <div class="progress-bar-fill" id="progress-fill"></div>
+    </div>
+    <div class="progress-text">
+      <span id="prog-wallets">0 / 0 wallets</span>
+      <span id="prog-price">0 with price data</span>
+      <span id="prog-time">~0s remaining</span>
+    </div>
+  </div>
+
+  <!-- Summary -->
+  <div class="summary-section" id="summary-section">
+    <div class="summary-grid">
+      <div class="summary-card"><div class="sc-value" id="s-wallets">—</div><div class="sc-label">Wallets Analyzed</div></div>
+      <div class="summary-card"><div class="sc-value pnl-pos" id="s-profit">—</div><div class="sc-label">In Profit</div></div>
+      <div class="summary-card"><div class="sc-value pnl-neg" id="s-loss">—</div><div class="sc-label">In Loss</div></div>
+      <div class="summary-card"><div class="sc-value diamond" id="s-diamond">—</div><div class="sc-label">Diamond Hands 💎</div></div>
+      <div class="summary-card"><div class="sc-value" id="s-entry">—</div><div class="sc-label">Avg Entry (Top 500)</div></div>
+      <div class="summary-card"><div class="sc-value" id="s-exit">—</div><div class="sc-label">Avg Exit (Top 500)</div></div>
+      <div class="summary-card"><div class="sc-value" id="s-pnl">—</div><div class="sc-label">Aggregate PnL</div></div>
+      <div class="summary-card"><div class="sc-value" id="s-value">—</div><div class="sc-label">Total Holding Value</div></div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-section" id="table-section">
+    <div class="table-header">
+      <span class="table-title">Holder Analysis</span>
+      <button class="btn-csv" onclick="exportCSV()">⬇ Export CSV</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Wallet</th>
+            <th>Value</th>
+            <th>% Supply</th>
+            <th>Entry</th>
+            <th>Exit</th>
+            <th>PnL</th>
+            <th>PnL %</th>
+            <th>Buys</th>
+            <th>Sells</th>
+            <th>Type</th>
+          </tr>
+        </thead>
+        <tbody id="results-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+let allResults = [];
+let tokenInfo = {};
+let evtSource = null;
+
+function fmtUsd(v) {
+  if (v == null) return '—';
+  const a = Math.abs(v);
+  if (a >= 1e6) return '$' + v.toLocaleString('en-US', {maximumFractionDigits:0});
+  if (a >= 1) return '$' + v.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+  if (a >= 0.001) return '$' + v.toFixed(4);
+  return '$' + v.toFixed(10);
+}
+
+function fmtPct(v) {
+  if (v == null) return '—';
+  return (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
+}
+
+async function startAnalysis() {
+  const ca = document.getElementById('ca').value.trim();
+  let chain = document.getElementById('chain').value;
+  const top = parseInt(document.getElementById('top').value) || 50;
+
+  if (!ca) return alert('Paste a contract address');
+
+  // Disable button
+  const btn = document.getElementById('btn-go');
+  btn.disabled = true;
+  btn.textContent = 'RUNNING...';
+
+  // Reset UI
+  allResults = [];
+  document.getElementById('results-body').innerHTML = '';
+  document.getElementById('summary-section').classList.remove('visible');
+  document.getElementById('table-section').classList.add('visible');
+  document.getElementById('progress-section').classList.add('visible');
+  document.getElementById('progress-fill').style.width = '0%';
+
+  // Auto-detect chain
+  if (chain === 'auto') {
+    document.getElementById('status-msg').textContent = 'Auto-detecting chain...';
+    try {
+      const resp = await fetch('/api/detect', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({contract: ca}),
+      });
+      const data = await resp.json();
+      if (data.chain) {
+        chain = data.chain;
+        document.getElementById('chain').value = chain;
+      } else {
+        alert('Could not auto-detect chain. Please select manually.');
+        btn.disabled = false;
+        btn.textContent = 'ANALYZE';
+        return;
+      }
+    } catch(e) {
+      alert('Detection failed: ' + e.message);
+      btn.disabled = false;
+      btn.textContent = 'ANALYZE';
+      return;
+    }
+  }
+
+  // Start analysis
+  try {
+    const resp = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({contract: ca, chain, top}),
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+
+    // Connect SSE
+    if (evtSource) evtSource.close();
+    evtSource = new EventSource('/api/stream/' + data.job_id);
+
+    evtSource.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+      handleEvent(msg);
+    };
+
+    evtSource.onerror = () => {
+      evtSource.close();
+      btn.disabled = false;
+      btn.textContent = 'ANALYZE';
+    };
+
+  } catch(e) {
+    alert('Error: ' + e.message);
+    btn.disabled = false;
+    btn.textContent = 'ANALYZE';
+  }
+}
+
+function handleEvent(msg) {
+  switch(msg.type) {
+    case 'status':
+      document.getElementById('status-msg').textContent = msg.msg;
+      break;
+
+    case 'token_info':
+      tokenInfo = msg.data;
+      showTokenInfo(msg.data);
+      break;
+
+    case 'holders_count':
+      document.getElementById('prog-wallets').textContent = `0 / ${msg.count} wallets`;
+      break;
+
+    case 'progress':
+      const pct = (msg.current / msg.total * 100).toFixed(1);
+      document.getElementById('progress-fill').style.width = pct + '%';
+      document.getElementById('prog-wallets').textContent = `${msg.current} / ${msg.total} wallets`;
+      document.getElementById('prog-price').textContent = `${msg.with_price} with price data`;
+      document.getElementById('prog-time').textContent = `~${msg.remaining}s remaining`;
+      document.getElementById('status-msg').textContent = `Analyzing wallet ${msg.current} of ${msg.total}...`;
+      break;
+
+    case 'wallet_result':
+      allResults.push(msg.data);
+      addTableRow(msg.data);
+      break;
+
+    case 'done':
+      document.getElementById('progress-fill').style.width = '100%';
+      document.getElementById('status-msg').textContent = 'Analysis complete!';
+      showSummary(msg.summary);
+      document.getElementById('btn-go').disabled = false;
+      document.getElementById('btn-go').textContent = 'ANALYZE';
+      if (evtSource) evtSource.close();
+      break;
+
+    case 'error':
+      document.getElementById('status-msg').textContent = '❌ ' + msg.msg;
+      document.getElementById('btn-go').disabled = false;
+      document.getElementById('btn-go').textContent = 'ANALYZE';
+      if (evtSource) evtSource.close();
+      break;
+  }
+}
+
+function showTokenInfo(info) {
+  const card = document.getElementById('token-card');
+  card.classList.add('visible');
+  document.getElementById('tk-name').textContent = info.name || '?';
+  document.getElementById('tk-symbol').textContent = info.symbol || '?';
+  document.getElementById('tk-price').textContent = fmtUsd(info.price_usd);
+  const ch = info.price_change_24h || 0;
+  const chEl = document.getElementById('tk-change');
+  chEl.textContent = fmtPct(ch);
+  chEl.className = 'stat-value ' + (ch >= 0 ? 'green' : 'red');
+  document.getElementById('tk-liq').textContent = fmtUsd(info.liquidity_usd);
+  document.getElementById('tk-vol').textContent = fmtUsd(info.volume_24h);
+  document.getElementById('tk-mcap').textContent = info.market_cap ? fmtUsd(info.market_cap) : '—';
+  document.getElementById('tk-dex').textContent = info.dex || '—';
+}
+
+function addTableRow(r) {
+  const tbody = document.getElementById('results-body');
+  const tr = document.createElement('tr');
+
+  const pnlClass = r.total_pnl > 0 ? 'pnl-pos' : r.total_pnl < 0 ? 'pnl-neg' : 'dim';
+  const hasCost = (r.total_cost_usd || 0) > 0;
+  const typeIcon = r.is_diamond_hands ? '<span class="diamond">💎</span>' :
+                   r.num_sells > r.num_buys ? '<span class="seller">📤</span>' : '🔄';
+
+  tr.innerHTML = `
+    <td>${r.rank}</td>
+    <td><code>${r.address_short || r.address?.slice(0,5)+'...'+r.address?.slice(-5)}</code></td>
+    <td>${fmtUsd(r.holding_value_usd)}</td>
+    <td>${(r.pct_supply || 0).toFixed(2)}%</td>
+    <td>${r.avg_entry_price ? fmtUsd(r.avg_entry_price) : '<span class="dim">—</span>'}</td>
+    <td>${r.avg_exit_price ? fmtUsd(r.avg_exit_price) : '<span class="dim">—</span>'}</td>
+    <td class="${hasCost ? pnlClass : 'dim'}">${hasCost ? fmtUsd(r.total_pnl) : '—'}</td>
+    <td class="${hasCost ? pnlClass : 'dim'}">${hasCost ? fmtPct(r.pnl_pct) : '—'}</td>
+    <td>${r.num_buys || 0}</td>
+    <td>${r.num_sells || 0}</td>
+    <td>${typeIcon}</td>
+  `;
+  tbody.appendChild(tr);
+}
+
+function showSummary(s) {
+  document.getElementById('summary-section').classList.add('visible');
+  document.getElementById('s-wallets').textContent = s.total_wallets;
+  document.getElementById('s-profit').textContent = s.in_profit;
+  document.getElementById('s-loss').textContent = s.in_loss;
+  document.getElementById('s-diamond').textContent = s.diamond_hands;
+  document.getElementById('s-entry').textContent = s.avg_entry_top500 ? fmtUsd(s.avg_entry_top500) : '—';
+  document.getElementById('s-exit').textContent = s.avg_exit_top500 ? fmtUsd(s.avg_exit_top500) : '—';
+
+  const pnlEl = document.getElementById('s-pnl');
+  pnlEl.textContent = fmtUsd(s.total_pnl);
+  pnlEl.className = 'sc-value ' + (s.total_pnl >= 0 ? 'pnl-pos' : 'pnl-neg');
+
+  document.getElementById('s-value').textContent = fmtUsd(s.total_holding_value);
+}
+
+function exportCSV() {
+  if (!allResults.length) return;
+
+  const headers = [
+    'rank','wallet','holding_value_usd','pct_supply','avg_entry_price','avg_exit_price',
+    'total_pnl','pnl_pct','realized_pnl','unrealized_pnl','total_cost_usd','total_revenue_usd',
+    'num_buys','num_sells','is_in_profit','is_diamond_hands'
+  ];
+
+  let csv = headers.join(',') + '\n';
+  for (const r of allResults) {
+    csv += [
+      r.rank, r.address, r.holding_value_usd, r.pct_supply,
+      r.avg_entry_price || '', r.avg_exit_price || '',
+      r.total_pnl, r.pnl_pct, r.realized_pnl, r.unrealized_pnl,
+      r.total_cost_usd, r.total_revenue_usd,
+      r.num_buys, r.num_sells, r.is_in_profit, r.is_diamond_hands
+    ].join(',') + '\n';
+  }
+
+  const blob = new Blob([csv], {type: 'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `analyzoooor_${tokenInfo.symbol || 'TOKEN'}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Enter key to submit
+document.getElementById('ca').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') startAnalysis();
+});
+</script>
+</body>
+</html>
